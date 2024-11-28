@@ -1,4 +1,10 @@
-﻿ using UnityEngine;
+﻿ using System;
+ using System.Linq;
+ using Cinemachine;
+ using Unity.Netcode;
+ using Unity.VisualScripting;
+ using UnityEngine;
+ using Random = UnityEngine.Random;
 #if ENABLE_INPUT_SYSTEM 
 using UnityEngine.InputSystem;
 #endif
@@ -12,8 +18,10 @@ namespace StarterAssets
 #if ENABLE_INPUT_SYSTEM 
     [RequireComponent(typeof(PlayerInput))]
 #endif
-    public class ThirdPersonController : MonoBehaviour
+    public class PlayerController : NetworkBehaviour
     {
+        #region FIELDS
+
         [Header("Player")]
         [Tooltip("Move speed of the character in m/s")]
         public float MoveSpeed = 2.0f;
@@ -75,6 +83,17 @@ namespace StarterAssets
         [Tooltip("For locking the camera position on all axis")]
         public bool LockCameraPosition = false;
 
+        [Tooltip("Capsule radius for player to interact with objects")]
+        public float capsuleRadius = 0.4f;
+        
+        [Tooltip("Layer mask for player to interact with objects")]
+        public LayerMask targetLayer;
+        
+        [SerializeField]
+        private Transform keyObjectHolderTransform;
+        
+        private BaseObject _currentHitObject;
+        
         // cinemachine
         private float _cinemachineTargetYaw;
         private float _cinemachineTargetPitch;
@@ -97,6 +116,7 @@ namespace StarterAssets
         private int _animIDJump;
         private int _animIDFreeFall;
         private int _animIDMotionSpeed;
+        
 
 #if ENABLE_INPUT_SYSTEM 
         private PlayerInput _playerInput;
@@ -105,10 +125,14 @@ namespace StarterAssets
         private CharacterController _controller;
         private StarterAssetsInputs _input;
         private GameObject _mainCamera;
+        private CinemachineVirtualCamera _cinemachineVirtualCamera;
 
         private const float _threshold = 0.01f;
+        private const float TargetDistance = 0.5f;
 
         private bool _hasAnimator;
+
+        #endregion
 
         private bool IsCurrentDeviceMouse
         {
@@ -121,7 +145,22 @@ namespace StarterAssets
 #endif
             }
         }
+        
+        public BaseObject CurrentKeyObject
+        {
+            get => _currentHitObject;
+            set => _currentHitObject = value;
+        }
+        
+        public static PlayerController LocalInstance { get; private set; }
+        public event EventHandler<OnKeyObjectPickedUpEventArgs> OnKeyObjectPickedUp;
+        public class OnKeyObjectPickedUpEventArgs : EventArgs
+        {
+            public ulong keyHolderId;
+            public bool isPickedUp;
+        }
 
+        public event EventHandler OnDoorEnterEvent;
 
         private void Awake()
         {
@@ -129,6 +168,11 @@ namespace StarterAssets
             if (_mainCamera == null)
             {
                 _mainCamera = GameObject.FindGameObjectWithTag("MainCamera");
+            }
+            
+            if(_cinemachineVirtualCamera == null)
+            {
+                _cinemachineVirtualCamera = _mainCamera.GetComponent<CinemachineBrain>().ActiveVirtualCamera.VirtualCameraGameObject.GetComponent<CinemachineVirtualCamera>();
             }
         }
 
@@ -139,11 +183,6 @@ namespace StarterAssets
             _hasAnimator = TryGetComponent(out _animator);
             _controller = GetComponent<CharacterController>();
             _input = GetComponent<StarterAssetsInputs>();
-#if ENABLE_INPUT_SYSTEM 
-            _playerInput = GetComponent<PlayerInput>();
-#else
-			Debug.LogError( "Starter Assets package is missing dependencies. Please use Tools/Starter Assets/Reinstall Dependencies to fix it");
-#endif
 
             AssignAnimationIDs();
 
@@ -152,10 +191,51 @@ namespace StarterAssets
             _fallTimeoutDelta = FallTimeout;
         }
 
+        public override void OnNetworkSpawn()
+        {
+            if (IsOwner)
+            {
+                LocalInstance = this;
+            }
+            
+            if (IsClient && IsOwner)
+            {
+                _playerInput = GetComponent<PlayerInput>();
+                _playerInput.enabled = true;
+                _cinemachineVirtualCamera.Follow = CinemachineCameraTarget.transform;
+            }
+
+            NetworkManager.Singleton.OnClientConnectedCallback += OnNetworkClientConnectedCallBack;
+            NetworkManager.Singleton.OnClientDisconnectCallback += OnNetworkClientDisconnectCallBack;
+            GameEventsManager.Instance.OnListenEvents();
+            
+        }
+
+        private void OnSubscribeEvents(object sender, EventArgs e)
+        {
+            
+        }
+
+        private void OnNetworkClientDisconnectCallBack(ulong clientId)
+        {
+            Debug.Log("Client disconnected:- " + clientId);
+        }
+
+        private void OnNetworkClientConnectedCallBack(ulong clientId)
+        {
+            Debug.Log("Client connected:- " + clientId);
+        }
+
         private void Update()
         {
+            if(!IsOwner) return;
             _hasAnimator = TryGetComponent(out _animator);
-
+            
+            if (Input.GetKeyDown(KeyCode.L))
+            {
+                RequestDropKeyObjectServerRpc();
+            }
+            HandleInteractions();
             JumpAndGravity();
             GroundedCheck();
             Move();
@@ -387,6 +467,173 @@ namespace StarterAssets
             {
                 AudioSource.PlayClipAtPoint(LandingAudioClip, transform.TransformPoint(_controller.center), FootstepAudioVolume);
             }
+        }
+        
+        private void HandleInteractions()
+        {
+            Vector3 start = transform.position;
+            Vector3 end = CalculateEndPoint(start);
+
+            BaseObject hitObject = PerformCapsuleCast(start, end);
+
+            //SetCurrentKeyObject(hitObject != _currentHitObject ? hitObject : null);
+        }
+
+        private void SetCurrentKeyObject(BaseObject hitObject)
+        {
+            CurrentKeyObject = hitObject;
+        }
+
+        private Vector3 CalculateEndPoint(Vector3 start)
+        {
+            return start + transform.up * 2f;
+        }
+
+        private BaseObject PerformCapsuleCast(Vector3 start, Vector3 end)
+        {
+            if (Physics.CapsuleCast(start, end, capsuleRadius, transform.forward, out RaycastHit hitInfo, TargetDistance, targetLayer))
+            {
+                if (hitInfo.transform.TryGetComponent<KeyObject>(out var keyObject) && !keyObject.IsHeld)
+                {
+                    KeyObjectCollectedByPlayerRpc(keyObject.NetworkObjectId, true);
+                }
+                else if(hitInfo.transform.TryGetComponent<DoorTrigger>(out var doorComponentObject))
+                {
+                    OnDoorEnterEvent?.Invoke(this, EventArgs.Empty);     
+                }
+            }
+            
+            return null;
+        }
+
+
+        [Rpc(SendTo.Server)]
+        private void KeyObjectCollectedByPlayerRpc(ulong keyObjectNetworkId, bool isPickedUp, RpcParams rpcParams = default)
+        {
+            var senderClientId = rpcParams.Receive.SenderClientId;
+
+            try
+            {
+                if (!NetworkManager.Singleton.ConnectedClients.TryGetValue(senderClientId, out var networkClient))
+                {
+                    Debug.LogWarning($"Sender client with ID {senderClientId} not found.");
+                    return;
+                }
+
+                if (!NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(keyObjectNetworkId, out var keyObject))
+                {
+                    Debug.LogWarning($"KeyObject with ID {keyObjectNetworkId} not found or already despawned.");
+                    return;
+                }
+
+                var keyObjectComponent = keyObject.GetComponent<KeyObject>();
+                if (isPickedUp && keyObject.IsSpawned && !keyObjectComponent.IsHeld)
+                {
+                    // Update the held state
+                    keyObjectComponent.SetHeldState(true);
+
+                    // Assign the key to the player
+                    var playerController = networkClient.PlayerObject.GetComponent<PlayerController>();
+                    playerController.CurrentKeyObject = keyObject.GetComponent<BaseObject>();
+                    keyObject.transform.SetParent(networkClient.PlayerObject.transform);
+                    SyncKeyObjectPositionRpc(keyObjectNetworkId);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Error in KeyObjectCollectedByPlayerRpc: {e.Message}");
+            }
+        }
+        
+        [Rpc(SendTo.Everyone)]
+        private void SyncKeyObjectPositionRpc(ulong keyObjectId)
+        {
+            NotifyToAllClients();
+            if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(keyObjectId, out var keyObject))
+            {
+                keyObject.transform.localPosition = new Vector3(0, 2f, 0); // Or use a configurable offset
+            }
+        }
+        
+        [Rpc(SendTo.Server)]
+        private void RequestDropKeyObjectServerRpc(RpcParams rpcParams = default)
+        {
+            var senderClientId = rpcParams.Receive.SenderClientId;
+
+            if (!NetworkManager.Singleton.ConnectedClients.TryGetValue(senderClientId, out var client))
+            {
+                Debug.LogWarning($"Client {senderClientId} not found.");
+                return;
+            }
+
+            var playerObject = client.PlayerObject;
+            var playerController = playerObject.GetComponent<PlayerController>();
+
+            if (playerController.CurrentKeyObject != null)
+            {
+                DropKeyObject(playerController.CurrentKeyObject);
+                playerController.CurrentKeyObject = null;
+            }
+        }
+        
+        private void DropKeyObject(BaseObject keyObject)
+        {
+            if (!IsServer) return; // Ensure only the server handles the drop logic
+
+            Vector3 dropPosition = transform.position + Vector3.forward; // In front of the player
+            dropPosition.y += 0.5f; // Add 0.5 units to the Y-coordinate (adjust as needed)
+            // Detach the key object and update its position
+            keyObject.transform.SetParent(null);
+            keyObject.transform.position = dropPosition; // Drop in front of the player
+
+            // Update the state of the KeyObject
+            var keyObjectComponent = keyObject.GetComponent<KeyObject>();
+            keyObjectComponent.SetHeldState(false);
+
+            // Notify all clients about the dropped key object
+            NotifyKeyObjectDroppedRpc(keyObject.NetworkObjectId, keyObject.transform.position);
+        }
+
+        [Rpc(SendTo.Everyone)]
+        private void NotifyKeyObjectDroppedRpc(ulong keyObjectId, Vector3 newPosition)
+        {
+            if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(keyObjectId, out var keyObject))
+            {
+                // Detach the object on clients and update its position
+                keyObject.transform.SetParent(null);
+                keyObject.transform.position = newPosition;
+
+                var keyObjectComponent = keyObject.GetComponent<KeyObject>();
+                keyObjectComponent.SetHeldState(false);
+
+                Debug.Log($"KeyObject {keyObject.name} dropped and synced at {newPosition}");
+            }
+            else
+            {
+                Debug.LogWarning($"KeyObject with ID {keyObjectId} not found during sync.");
+            }
+        }
+        
+        private void SetKeyHolderData(ulong keyObjectId)
+        {
+            if(NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(keyObjectId,out var networkObjectKeyObject))
+            {
+                if (networkObjectKeyObject != null && networkObjectKeyObject.IsSpawned)
+                {
+                    var keyObjectController = GameManager.Instance.GetKeyObjectController();
+                    keyObjectController.SetKeyHolderData(keyObjectId);
+                }
+            }
+        }
+
+        private void NotifyToAllClients()
+        {
+            GameUIController.Instance.UpdatedKeyObjectStatus(3);
+        }
+
+        public bool HasKey()
+        {
+            return CurrentKeyObject != null;
         }
     }
 }
