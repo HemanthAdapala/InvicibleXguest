@@ -2,7 +2,7 @@ using System;
 using StarterAssets;
 using UnityEngine;
 
-public class DoorTrigger : MonoBehaviour,IPlayerSpawnListener
+public class DoorTrigger : MonoBehaviour, IPlayerSpawnListener
 {
     [SerializeField] private Transform doorObject;
     
@@ -22,16 +22,14 @@ public class DoorTrigger : MonoBehaviour,IPlayerSpawnListener
     private void OnEnteredDoorEvent(object sender, EventArgs e)
     {
         Debug.Log("Player entered door");
-        if(PlayerController.LocalInstance.HasKey())
-        {
-            var boxCollider = doorObject.GetComponentInChildren<BoxCollider>();
-            boxCollider.isTrigger = true;
-            doorObject.gameObject.SetActive(false);
-        }
-        else
-        {
-            return;
-        }
+        var boxCollider = doorObject.GetComponentInChildren<BoxCollider>();
+        boxCollider.isTrigger = true;
+        doorObject.gameObject.SetActive(false);
+    }
+
+    private void OnRoomEnteredRpcToOwnerOnBehaviour()
+    {
+        
     }
 
     private void OnDestroy()
