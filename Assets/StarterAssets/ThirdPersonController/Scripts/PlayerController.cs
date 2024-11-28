@@ -1,11 +1,11 @@
-﻿ using System;
- using System.Linq;
- using Cinemachine;
- using Unity.Netcode;
- using Unity.VisualScripting;
- using UnityEngine;
- using Random = UnityEngine.Random;
-#if ENABLE_INPUT_SYSTEM 
+﻿using System;
+using System.Linq;
+using Cinemachine;
+using Unity.Netcode;
+using Unity.VisualScripting;
+using UnityEngine;
+using Random = UnityEngine.Random;
+#if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
 
@@ -15,22 +15,20 @@ using UnityEngine.InputSystem;
 namespace StarterAssets
 {
     [RequireComponent(typeof(CharacterController))]
-#if ENABLE_INPUT_SYSTEM 
+#if ENABLE_INPUT_SYSTEM
     [RequireComponent(typeof(PlayerInput))]
 #endif
     public class PlayerController : NetworkBehaviour
     {
         #region FIELDS
 
-        [Header("Player")]
-        [Tooltip("Move speed of the character in m/s")]
+        [Header("Player")] [Tooltip("Move speed of the character in m/s")]
         public float MoveSpeed = 2.0f;
 
         [Tooltip("Sprint speed of the character in m/s")]
         public float SprintSpeed = 5.335f;
 
-        [Tooltip("How fast the character turns to face movement direction")]
-        [Range(0.0f, 0.3f)]
+        [Tooltip("How fast the character turns to face movement direction")] [Range(0.0f, 0.3f)]
         public float RotationSmoothTime = 0.12f;
 
         [Tooltip("Acceleration and deceleration")]
@@ -40,8 +38,7 @@ namespace StarterAssets
         public AudioClip[] FootstepAudioClips;
         [Range(0, 1)] public float FootstepAudioVolume = 0.5f;
 
-        [Space(10)]
-        [Tooltip("The height the player can jump")]
+        [Space(10)] [Tooltip("The height the player can jump")]
         public float JumpHeight = 1.2f;
 
         [Tooltip("The character uses its own gravity value. The engine default is -9.81f")]
@@ -58,8 +55,7 @@ namespace StarterAssets
         [Tooltip("If the character is grounded or not. Not part of the CharacterController built in grounded check")]
         public bool Grounded = true;
 
-        [Tooltip("Useful for rough ground")]
-        public float GroundedOffset = -0.14f;
+        [Tooltip("Useful for rough ground")] public float GroundedOffset = -0.14f;
 
         [Tooltip("The radius of the grounded check. Should match the radius of the CharacterController")]
         public float GroundedRadius = 0.28f;
@@ -85,15 +81,14 @@ namespace StarterAssets
 
         [Tooltip("Capsule radius for player to interact with objects")]
         public float capsuleRadius = 0.4f;
-        
+
         [Tooltip("Layer mask for player to interact with objects")]
         public LayerMask targetLayer;
-        
-        [SerializeField]
-        private Transform keyObjectHolderTransform;
-        
+
+        [SerializeField] private Transform keyObjectHolderTransform;
+
         private BaseObject _currentHitObject;
-        
+
         // cinemachine
         private float _cinemachineTargetYaw;
         private float _cinemachineTargetPitch;
@@ -116,9 +111,9 @@ namespace StarterAssets
         private int _animIDJump;
         private int _animIDFreeFall;
         private int _animIDMotionSpeed;
-        
 
-#if ENABLE_INPUT_SYSTEM 
+
+#if ENABLE_INPUT_SYSTEM
         private PlayerInput _playerInput;
 #endif
         private Animator _animator;
@@ -145,15 +140,16 @@ namespace StarterAssets
 #endif
             }
         }
-        
+
         public BaseObject CurrentKeyObject
         {
             get => _currentHitObject;
             set => _currentHitObject = value;
         }
-        
+
         public static PlayerController LocalInstance { get; private set; }
         public event EventHandler<OnKeyObjectPickedUpEventArgs> OnKeyObjectPickedUp;
+
         public class OnKeyObjectPickedUpEventArgs : EventArgs
         {
             public ulong keyHolderId;
@@ -169,17 +165,18 @@ namespace StarterAssets
             {
                 _mainCamera = GameObject.FindGameObjectWithTag("MainCamera");
             }
-            
-            if(_cinemachineVirtualCamera == null)
+
+            if (_cinemachineVirtualCamera == null)
             {
-                _cinemachineVirtualCamera = _mainCamera.GetComponent<CinemachineBrain>().ActiveVirtualCamera.VirtualCameraGameObject.GetComponent<CinemachineVirtualCamera>();
+                _cinemachineVirtualCamera = _mainCamera.GetComponent<CinemachineBrain>().ActiveVirtualCamera
+                    .VirtualCameraGameObject.GetComponent<CinemachineVirtualCamera>();
             }
         }
 
         private void Start()
         {
             _cinemachineTargetYaw = CinemachineCameraTarget.transform.rotation.eulerAngles.y;
-            
+
             _hasAnimator = TryGetComponent(out _animator);
             _controller = GetComponent<CharacterController>();
             _input = GetComponent<StarterAssetsInputs>();
@@ -197,7 +194,7 @@ namespace StarterAssets
             {
                 LocalInstance = this;
             }
-            
+
             if (IsClient && IsOwner)
             {
                 _playerInput = GetComponent<PlayerInput>();
@@ -208,12 +205,10 @@ namespace StarterAssets
             NetworkManager.Singleton.OnClientConnectedCallback += OnNetworkClientConnectedCallBack;
             NetworkManager.Singleton.OnClientDisconnectCallback += OnNetworkClientDisconnectCallBack;
             GameEventsManager.Instance.OnListenEvents();
-            
         }
 
         private void OnSubscribeEvents(object sender, EventArgs e)
         {
-            
         }
 
         private void OnNetworkClientDisconnectCallBack(ulong clientId)
@@ -228,13 +223,14 @@ namespace StarterAssets
 
         private void Update()
         {
-            if(!IsOwner) return;
+            if (!IsOwner) return;
             _hasAnimator = TryGetComponent(out _animator);
-            
+
             if (Input.GetKeyDown(KeyCode.L))
             {
                 RequestDropKeyObjectServerRpc();
             }
+
             HandleInteractions();
             JumpAndGravity();
             GroundedCheck();
@@ -456,7 +452,8 @@ namespace StarterAssets
                 if (FootstepAudioClips.Length > 0)
                 {
                     var index = Random.Range(0, FootstepAudioClips.Length);
-                    AudioSource.PlayClipAtPoint(FootstepAudioClips[index], transform.TransformPoint(_controller.center), FootstepAudioVolume);
+                    AudioSource.PlayClipAtPoint(FootstepAudioClips[index], transform.TransformPoint(_controller.center),
+                        FootstepAudioVolume);
                 }
             }
         }
@@ -465,10 +462,11 @@ namespace StarterAssets
         {
             if (animationEvent.animatorClipInfo.weight > 0.5f)
             {
-                AudioSource.PlayClipAtPoint(LandingAudioClip, transform.TransformPoint(_controller.center), FootstepAudioVolume);
+                AudioSource.PlayClipAtPoint(LandingAudioClip, transform.TransformPoint(_controller.center),
+                    FootstepAudioVolume);
             }
         }
-        
+
         private void HandleInteractions()
         {
             Vector3 start = transform.position;
@@ -491,24 +489,47 @@ namespace StarterAssets
 
         private BaseObject PerformCapsuleCast(Vector3 start, Vector3 end)
         {
-            if (Physics.CapsuleCast(start, end, capsuleRadius, transform.forward, out RaycastHit hitInfo, TargetDistance, targetLayer))
+            if (Physics.CapsuleCast(start, end, capsuleRadius, transform.forward, out RaycastHit hitInfo,
+                    TargetDistance, targetLayer))
             {
                 if (hitInfo.transform.TryGetComponent<KeyObject>(out var keyObject) && !keyObject.IsHeld)
                 {
                     KeyObjectCollectedByPlayerRpc(keyObject.NetworkObjectId, true);
                 }
-                else if(hitInfo.transform.TryGetComponent<DoorTrigger>(out var doorComponentObject))
+                else if (hitInfo.transform.TryGetComponent<DoorTrigger>(out var doorComponentObject))
                 {
-                    OnDoorEnterEvent?.Invoke(this, EventArgs.Empty);     
+                    OnDoorEnteredRpc();
                 }
             }
-            
+
             return null;
         }
 
+        [Rpc(SendTo.Server)]
+        private void OnDoorEnteredRpc(RpcParams rpcParams = default)
+        {
+            if(NetworkManager.Singleton.ConnectedClients.TryGetValue(rpcParams.Receive.SenderClientId, out var networkClient))
+            {
+                if(networkClient.PlayerObject.TryGetComponent<PlayerController>(out var playerController))
+                {
+                    if (playerController.HasKey())
+                    {
+                        OnDoorEnteredClientRpc(RpcTarget.Single(rpcParams.Receive.SenderClientId,RpcTargetUse.Temp));
+                    }
+                }
+            }
+        }
+        
+        [Rpc(SendTo.SpecifiedInParams)]
+        private void OnDoorEnteredClientRpc(RpcParams rpcParams = default)
+        {
+            OnDoorEnterEvent?.Invoke(this, EventArgs.Empty);
+        }
+        
 
         [Rpc(SendTo.Server)]
-        private void KeyObjectCollectedByPlayerRpc(ulong keyObjectNetworkId, bool isPickedUp, RpcParams rpcParams = default)
+        private void KeyObjectCollectedByPlayerRpc(ulong keyObjectNetworkId, bool isPickedUp,
+            RpcParams rpcParams = default)
         {
             var senderClientId = rpcParams.Receive.SenderClientId;
 
@@ -520,7 +541,8 @@ namespace StarterAssets
                     return;
                 }
 
-                if (!NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(keyObjectNetworkId, out var keyObject))
+                if (!NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(keyObjectNetworkId,
+                        out var keyObject))
                 {
                     Debug.LogWarning($"KeyObject with ID {keyObjectNetworkId} not found or already despawned.");
                     return;
@@ -544,7 +566,7 @@ namespace StarterAssets
                 Debug.LogError($"Error in KeyObjectCollectedByPlayerRpc: {e.Message}");
             }
         }
-        
+
         [Rpc(SendTo.Everyone)]
         private void SyncKeyObjectPositionRpc(ulong keyObjectId)
         {
@@ -554,7 +576,7 @@ namespace StarterAssets
                 keyObject.transform.localPosition = new Vector3(0, 2f, 0); // Or use a configurable offset
             }
         }
-        
+
         [Rpc(SendTo.Server)]
         private void RequestDropKeyObjectServerRpc(RpcParams rpcParams = default)
         {
@@ -575,7 +597,7 @@ namespace StarterAssets
                 playerController.CurrentKeyObject = null;
             }
         }
-        
+
         private void DropKeyObject(BaseObject keyObject)
         {
             if (!IsServer) return; // Ensure only the server handles the drop logic
@@ -613,10 +635,11 @@ namespace StarterAssets
                 Debug.LogWarning($"KeyObject with ID {keyObjectId} not found during sync.");
             }
         }
-        
+
         private void SetKeyHolderData(ulong keyObjectId)
         {
-            if(NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(keyObjectId,out var networkObjectKeyObject))
+            if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(keyObjectId,
+                    out var networkObjectKeyObject))
             {
                 if (networkObjectKeyObject != null && networkObjectKeyObject.IsSpawned)
                 {
