@@ -1,0 +1,16 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4fdac895fd6e784fb3ef49dda583927, type: 3}
+  m_Name: StickyBombVisualData
+  m_EditorClassIdentifier: 
+  abilityPrefab: {fileID: 7980519780344956238, guid: c6b9d3e8cad05704ba04a2a96112e387, type: 3}
+  visualEffectPrefab: {fileID: 7980519780344956238, guid: 7ba67ffe643e07044923f14541ab079f, type: 3}
