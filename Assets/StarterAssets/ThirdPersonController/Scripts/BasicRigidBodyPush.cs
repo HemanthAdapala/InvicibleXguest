@@ -1,7 +1,6 @@
-﻿using Unity.Netcode;
-using UnityEngine;
+﻿using UnityEngine;
 
-public class BasicRigidBodyPush : NetworkBehaviour
+public class BasicRigidBodyPush : MonoBehaviour
 {
 	public LayerMask pushLayers;
 	public bool canPush;

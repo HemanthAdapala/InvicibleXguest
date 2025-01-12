@@ -1,121 +1,238 @@
 using System;
 using InvicibleXGuest.Scripts;
-using StarterAssets;
 using Unity.Netcode;
 using UnityEngine;
 
 public class KeyObjectController : NetworkBehaviour, IController
 {
     [Header("Random Position Settings")]
-    [SerializeField] public Vector3 minBounds;
-    [SerializeField] public Vector3 maxBounds;
-    [SerializeField] public Transform keyPositionSpawnObjectParent;
+    [SerializeField] private Vector3 minBounds;
+    [SerializeField] private Vector3 maxBounds;
+    [SerializeField] private Transform keyPositionSpawnObjectParent;
     [SerializeField] private RandomPositionGenerator randomPositionGenerator;
     [SerializeField] private Transform keyPrefabObject;
 
-    private float spawnAfterSeconds = 10f; // Time to wait before spawning
-    private bool isInitialized = false;
-    private bool hasSpawned = false; // Ensures the object spawns only once
+    [Header("Spawn Settings")]
+    [SerializeField] private float spawnDelay = 10f;
 
+    private NetworkVariable<KeyObjectData> _keyObjectData;
+    private float _spawnTimer;
+    private bool _hasSpawned;
+    private bool _isInitialized;
+
+    public static KeyObjectController Instance { get; private set; }
+
+    public event EventHandler OnKeyObjectSpawnedEvent;
+    public event EventHandler OnKeyObjectPickedUpEvent;
+    public event EventHandler OnKeyObjectDroppedEvent;
     public event EventHandler<CountDownStateUpdatedEventArgs> OnCountDownStateUpdated;
 
-    public class CountDownStateUpdatedEventArgs : EventArgs
+    private void Awake()
     {
-        public CountDownState CountDownState;
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        _keyObjectData = new NetworkVariable<KeyObjectData>();
+        _keyObjectData.OnValueChanged += KeyObjectController_OnKeyObjectDataChanged;
+        Initialize();
+    }
+
+    private void KeyObjectController_OnKeyObjectDataChanged(KeyObjectData previousvalue, KeyObjectData newvalue)
+    {
+        Debug.Log("KeyObjectData changed: " + previousvalue.ownerId + " " + previousvalue.isHeld + " -> " + newvalue.ownerId + " " + newvalue.ownerId);
+    }
+
+    private void Update()
+    {
+        if (_isInitialized && !_hasSpawned)
+        {
+            UpdateSpawnTimer();
+        }
     }
 
     public void Initialize()
     {
         Debug.Log("KeyObjectController Initialized");
-        GameUIController.Instance.UpdatedKeyObjectStatus(1); // Notify UI
-        isInitialized = true;
-
+        _isInitialized = true;
+        _spawnTimer = spawnDelay;
         NotifyCountDownState(CountDownState.Started);
     }
 
-    private void Update()
+    private void UpdateSpawnTimer()
     {
-        if (!isInitialized || hasSpawned) return; // Skip if already spawned or not initialized
+        _spawnTimer -= Time.deltaTime;
 
-        spawnAfterSeconds -= Time.deltaTime;
-
-        if (spawnAfterSeconds <= 0f)
+        if (_spawnTimer <= 0f)
         {
-            hasSpawned = true; // Mark as spawned
+            _hasSpawned = true;
             if (IsServer)
             {
-                //SpawnKeyObjectServerRpc();
-                SpawnKeyObjectRpc();
+                SpawnKeyObjectServerRpc();
             }
         }
     }
 
-    [Rpc(SendTo.Server)]
-    private void SpawnKeyObjectRpc()
+    [ServerRpc(RequireOwnership = false)]
+    private void SpawnKeyObjectServerRpc()
     {
         SpawnKeyObject();
-        NotifyToAllClientsAboutKeySpawnedRpc();
+        NotifyKeyObjectSpawnedClientRpc();
     }
 
-    [Rpc(SendTo.Everyone)]
-    private void NotifyToAllClientsAboutKeySpawnedRpc()
+    [ClientRpc]
+    private void NotifyKeyObjectSpawnedClientRpc()
     {
-        GameUIController.Instance.UpdatedKeyObjectStatus(2);
+        OnKeyObjectSpawnedEvent?.Invoke(this, EventArgs.Empty);
     }
 
     private void SpawnKeyObject()
     {
         Debug.Log("Spawning KeyObject...");
+
         var spawnPosition = randomPositionGenerator.GetRandomPositionWithinBounds(minBounds, maxBounds);
-
-        // Instantiate the KeyObject prefab
         var instance = Instantiate(keyPrefabObject, spawnPosition, Quaternion.identity, keyPositionSpawnObjectParent);
-        var networkObject = instance.GetComponent<NetworkObject>();
 
-        // Ensure the NetworkObject exists before spawning
-        if (networkObject != null)
+        if (TrySpawnNetworkObject(instance))
         {
-            networkObject.Spawn();
+            InitializeKeyObject(instance);
             NotifyCountDownState(CountDownState.Finished);
-
-            // Initialize the KeyObject
-            var keyObject = instance.GetComponent<KeyObject>();
-            if (keyObject != null)
-            {
-                keyObject.Initialize(1, ObjectType.Key);
-            }
+            Debug.Log("KeyObject spawned successfully!");
         }
         else
         {
             Debug.LogError("KeyObject prefab is missing a NetworkObject component!");
         }
     }
+    
+    private void InitializeKeyObject(Transform instance)
+    {
+        var keyObject = instance.GetComponent<KeyObject>();
+        if (keyObject != null)
+        {
+            keyObject.Initialize(false);
+            keyObject.RotateKeyObjectClientRpc();
+        }
+    }
+
+    private bool TrySpawnNetworkObject(Transform instance)
+    {
+        var networkObject = instance.GetComponent<NetworkObject>();
+        if (networkObject != null)
+        {
+            networkObject.Spawn();
+            if (IsServer)
+            {
+                // Initialize key object data for NetworkVariable at spawn
+                _keyObjectData.Value = new KeyObjectData
+                {
+                    isHeld = false,ownerId = 100
+                };
+            }
+            return true;
+        }
+        return false;
+    }
+
+    
 
     private void NotifyCountDownState(CountDownState state)
     {
         OnCountDownStateUpdated?.Invoke(this, new CountDownStateUpdatedEventArgs { CountDownState = state });
     }
-    
-    
-    public void SetKeyHolderData(ulong currentKeyObjectId)
+
+    public void PickUpKeyObject(KeyObject keyObject)
     {
-        if(NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(currentKeyObjectId,out var networkObjectKeyObject))
+        if (keyObject.IsHeld) return;
+
+        RequestPickupKeyObjectServerRpc(keyObject.NetworkObjectId);
+    }
+    
+    [ServerRpc(RequireOwnership = false)]
+    private void RequestPickupKeyObjectServerRpc(ulong keyObjectId, ServerRpcParams rpcParams = default)
+    {
+        var senderClientId = rpcParams.Receive.SenderClientId;
+        //Change the variable data of the KeyObject(False) - when picked up
+        ChangeKeyObjectVariableData(senderClientId,true);
+        RequestPickUpKeyObjectClientRpc(keyObjectId, senderClientId);
+    }
+
+    public void ChangeKeyObjectVariableData(ulong senderClientId,bool isHeld)
+    {
+        if (IsServer)
         {
-            var keyObject = networkObjectKeyObject.GetComponent<KeyObject>();
-            if (keyObject != null)
+            // Update key object data for NetworkVariable
+            _keyObjectData.Value = new KeyObjectData
             {
-                var clientId = Unity.Netcode.NetworkManager.Singleton.LocalClientId;
-                if(Unity.Netcode.NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var networkClient))
-                {
-                    var networkObject = networkClient.PlayerObject.GetComponent<NetworkObject>();
-                    if (networkObject != null)
-                    {
-                        PlayerController.LocalInstance.CurrentKeyObject = keyObject;
-                    }
-                    
-                }
-            }
+                isHeld = isHeld, ownerId = true ? senderClientId : 100
+            };
         }
+    }
+
+    [ClientRpc]
+    private void RequestPickUpKeyObjectClientRpc(ulong keyObjectId, ulong senderClientId)
+    {
+        if (!NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(keyObjectId, out var keyNetworkObject))
+            return;
+        
+        if (!NetworkManager.Singleton.ConnectedClients.TryGetValue(senderClientId, out var networkClient))
+        {
+            Debug.LogWarning($"Sender client with ID {senderClientId} not found.");
+            return;
+        }
+        var playerController = networkClient.PlayerObject.GetComponent<PlayerController>();
+        playerController.currentKeyObject = keyNetworkObject.GetComponent<KeyObject>();
+        
+        //SetKeyObjectData & follow target
+        var keyObject = keyNetworkObject.GetComponent<KeyObject>();
+        keyObject.SetHeldState(true);
+        var followTarget = keyObject.GetComponent<FollowTransform>();
+        followTarget.FollowTarget(playerController.transform);
+        keyObject.Initialize(true);
+        
+        //Notify all clients that KeyObject data is changed and someone is pickedUp
+        NotifyToAllClients();
+    }
+    
+    private void NotifyToAllClients()
+    {
+        Debug.Log("Notifying all clients...");
+        OnKeyObjectPickedUpEvent?.Invoke(this, EventArgs.Empty);
+    }
+    
+    public void NotifyKeyObjectDropped(ulong keyObjectId, Vector3 dropPosition)
+    {
+        NotifyKeyObjectDroppedClientRpc(keyObjectId, dropPosition);
+    }
+
+    [ClientRpc]
+    private void NotifyKeyObjectDroppedClientRpc(ulong keyObjectId, Vector3 dropPosition)
+    {
+        if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(keyObjectId, out var keyNetworkObject))
+        {
+            var keyObject = keyNetworkObject.GetComponent<KeyObject>();
+            var followTransform = keyObject.GetComponent<FollowTransform>();
+            followTransform?.StopFollowing();
+
+            keyObject.transform.SetParent(null);
+            keyObject.transform.position = dropPosition;
+            keyObject.SetHeldState(false);
+            OnKeyObjectDroppedEvent?.Invoke(this, EventArgs.Empty);
+        }
+    }
+     
+     
+
+    public class CountDownStateUpdatedEventArgs : EventArgs
+    {
+        public CountDownState CountDownState;
+    }
+
+    public void OnKeyObjectDropped()
+    {
+        OnKeyObjectDroppedEvent?.Invoke(this, EventArgs.Empty);
     }
 }
 
@@ -125,4 +242,3 @@ public enum CountDownState
     Started,
     Finished
 }
-

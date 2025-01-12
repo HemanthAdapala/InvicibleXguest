@@ -34,17 +34,7 @@ public class SpawnController : MonoBehaviour,IController
     
     public void SpawnPlayers()
     {
-        for (int i = 0; i < _playersMax; i++)
-        {
-            var playerInstance = Instantiate(player, playerPositions[i], Quaternion.identity);
-            //If you want the camera to follow only the first player for testing
-            if (i == 0)
-            {
-                var playerComponent = playerInstance.GetComponent<Player>();
-                //playerComponent.PlayerCameraFollow();
-                PlayerManager.Instance.SetPlayer(playerComponent);
-            }
-        }
+        
     }
 
     

@@ -1,38 +1,43 @@
 using System;
-using StarterAssets;
+using System.Collections;
+using Unity.Netcode;
 using UnityEngine;
 
-public class KeyObject : BaseObject
+public class KeyObject : NetworkBehaviour
 {
-    public bool IsPickedUp { get; private set; }
-    public ulong KeyHolderId { get; private set; }
+    public bool IsHeld { get; private set; }
     
-    public bool IsHeld { get; private set; } = false;
-
-    public void SetHeldState(bool held)
+    public void Initialize(bool isHeld = false)
     {
-        IsHeld = held;
+        Debug.Log("KeyObject Initialized" + isHeld);
+        IsHeld = isHeld;
+    }
+    
+    [ClientRpc]
+    public void RotateKeyObjectClientRpc()
+    {
+        StartCoroutine(RotateKeyObject());
     }
 
-    private void Start()
+    public void SetHeldState(bool isHeld)
     {
-        if(PlayerController.LocalInstance != null)
+        IsHeld = isHeld;
+        if (isHeld)
         {
-            PlayerController.LocalInstance.OnKeyObjectPickedUp += OnKeyObjectPickedUp;
+            StopCoroutine(RotateKeyObject());               
         }
-        InitializeBaseData();
+        else
+        {
+            StartCoroutine(RotateKeyObject());
+        }
     }
 
-    private void InitializeBaseData()
+    IEnumerator RotateKeyObject()
     {
-        objectType = ObjectType.Key;
-        IsPickedUp = false;
-        KeyHolderId = 0;
-    }
-
-    private void OnKeyObjectPickedUp(object sender, PlayerController.OnKeyObjectPickedUpEventArgs e)
-    {
-        IsPickedUp = true;
-        KeyHolderId = e.keyHolderId;
+        while (!IsHeld)
+        {
+            gameObject.transform.Rotate(new Vector3(0,1),90 * Time.deltaTime);       
+            yield return null;
+        }
     }
 }

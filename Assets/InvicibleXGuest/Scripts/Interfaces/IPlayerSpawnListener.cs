@@ -1,6 +1,4 @@
-using UnityEngine;
-
 public interface IPlayerSpawnListener
 {
-    void OnPlayerSpawned();
+    public void OnPlayerSpawned();
 }

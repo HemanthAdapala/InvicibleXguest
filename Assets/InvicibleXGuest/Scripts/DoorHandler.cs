@@ -1,7 +1,4 @@
-using System;
-using StarterAssets;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public class DoorHandler : MonoBehaviour, IDoor
 {
@@ -12,6 +9,28 @@ public class DoorHandler : MonoBehaviour, IDoor
     private void Start()
     {
         InitializeComponents();
+    }
+
+
+    private void OnCollisionEnter(Collision other)
+    {
+        if (other.gameObject.CompareTag("Player")) Debug.Log("Player entered");
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        Debug.Log("MeshRenderer initialized");
+
+        // if(other.gameObject.CompareTag("Player"))
+        // {
+        //     Debug.Log("MeshRenderer initialized");
+        //
+        //     var player = other.gameObject.GetComponent<PlayerController>();
+        //     if(player.HasKey())
+        //     {
+        //         UpdateDoorState();
+        //     }
+        // }
     }
 
     private void InitializeComponents()
@@ -32,32 +51,6 @@ public class DoorHandler : MonoBehaviour, IDoor
     {
         Debug.Log("MeshRenderer initialized");
         meshRenderer.material.color = colors[0];
-    }
-
-    private void OnTriggerEnter(Collider other)
-    {
-        Debug.Log("MeshRenderer initialized");
-
-        if(other.gameObject.CompareTag("Player"))
-        {
-            Debug.Log("MeshRenderer initialized");
-
-            var player = other.gameObject.GetComponent<PlayerController>();
-            if(player.HasKey())
-            {
-                UpdateDoorState();
-            }
-        }
-    }
-    
-    
-
-    private void OnCollisionEnter(Collision other)
-    {
-        if(other.gameObject.CompareTag("Player"))
-        {
-            Debug.Log("Player entered");
-        }
     }
 
     private void UpdateDoorState()
