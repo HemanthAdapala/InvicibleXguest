@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace InvicibleXGuest.Scripts.UI
 {
@@ -27,9 +28,52 @@ namespace InvicibleXGuest.Scripts.UI
             // Debug.Log(result[0] + " " + result[1]);
             
             //Container with most water
-            var result = MaxArea(new int[] { 1,7,2,5,4,7,3,6 });
+            //var result = MaxArea(new int[] { 1,7,2,5,4,7,3,6 });
+            
+            
+            //Buy and Sell stock
+            //int result = BuyAndSellStock(new int[]{7,1,5,3,6,4});
+            
+            //Longest substring without repeating characters
+            int result = LengthOfLongestSubstring("abcabcbb");
+            Debug.Log(result);
+        }
+
+        private int BuyAndSellStock(int[] prices)
+        {
+            int result = 0;
+            int l = 0, r = 1;
+
+            while (r < prices.Length)
+            {
+                if (prices[l] < prices[r])
+                {
+                    
+                }
+                else
+                {
+                    l = r;
+                }
+                r++;
+            }
+            
+            return result;
         }
         
+        private int LengthOfLongestSubstring(string s)
+        {
+            HashSet<char> charSet = new HashSet<char>(s.ToCharArray());
+            foreach (var val in charSet)
+            {
+                if(!charSet.Contains(val))
+                {
+                    charSet.Remove(val);
+                }
+            }
+
+            return charSet.Count;
+        }
+
         //Brute Force Alog
         private int MaxArea(int[] heights) 
         {
