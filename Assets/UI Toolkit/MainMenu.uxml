@@ -1,0 +1,16 @@
+<engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Toolkit/MainMenuStyle.uss?fileID=7433441132597879392&amp;guid=bdc9a6a1695983440bdad0e580cab196&amp;type=3#MainMenuStyle" />
+    <engine:VisualElement name="Background" style="flex-grow: 1; background-image: url(&quot;project://database/Assets/InvicibleXGuest/UI/MainBg.jpeg?fileID=21300000&amp;guid=97695ae474e7e2240bd4b8785930ecd6&amp;type=3#MainBg&quot;);" />
+    <engine:VisualElement name="Header" style="flex-grow: 1; width: 700px; height: 200px; position: absolute; align-self: center; translate: 0 150px; justify-content: center; align-items: center; align-content: auto;">
+        <engine:Label text="invisibleXguest" name="GameName" class="header" style="font-size: 75px;" />
+    </engine:VisualElement>
+    <engine:VisualElement name="ButtonsContainer" style="position: absolute; width: 600px; height: 400px; background-color: rgba(255, 0, 0, 0); translate: 1270px 650px; flex-direction: column-reverse; justify-content: flex-start; align-self: flex-start; align-content: flex-start;">
+        <engine:Button text="PLAY" name="PlayButton" tooltip="Click here to play" class="button" style="flex-direction: column; height: 280px; margin-bottom: 10px; margin-left: 10px; margin-right: 10px; font-size: 65px;" />
+        <engine:VisualElement name="TopHudElementsContainer" style="flex-grow: 1; flex-direction: row; flex-shrink: 1; flex-wrap: nowrap; justify-content: space-around;">
+            <engine:Button text="Settings" name="SettingsButton" tooltip="Click here for settings" class="button" style="width: 100px; height: 100px; font-size: 20px; margin-left: 10px; margin-right: 10px; margin-top: 5px; margin-bottom: 5px; background-image: none; background-size: 50% 50%; background-position-x: center 0; -unity-background-scale-mode: stretch-to-fill;" />
+            <engine:Button text="Music" name="AudioSettingsButton" tooltip="Click here for music settings" class="button" style="width: 100px; height: 100px; font-size: 20px; margin-left: 10px; margin-right: 10px; margin-top: 5px; margin-bottom: 5px;" />
+            <engine:Button text="Display" name="DisplaySettingsButton" tooltip="Click here for display settings" class="button" style="width: 100px; height: 100px; font-size: 20px; margin-left: 10px; margin-right: 10px; margin-top: 5px; margin-bottom: 5px;" />
+            <engine:Button text="Quit" name="ExitButton" tooltip="Click here for quit" class="button" style="width: 100px; height: 100px; font-size: 20px; margin-left: 10px; margin-right: 10px; margin-top: 0.5s; margin-bottom: 5px;" />
+        </engine:VisualElement>
+    </engine:VisualElement>
+</engine:UXML>
