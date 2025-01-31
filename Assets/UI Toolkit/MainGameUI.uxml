@@ -1,0 +1,9 @@
+<engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Toolkit/FlexibleGridLayout.uss?fileID=7433441132597879392&amp;guid=90bc1a4525d5f664f998eae5b08dcdad&amp;type=3#FlexibleGridLayout" />
+    <engine:VisualElement name="EquippedItemsContainer" style="flex-grow: 1; width: 500px; height: 500px; align-self: flex-end; position: absolute;" />
+    <engine:VisualElement name="WallerDetailsContainer" style="flex-grow: 1; position: absolute; width: 300px; height: 100px; align-self: center; align-items: center; justify-content: center;">
+        <engine:Label text="$5500" name="PlayerCurrency" style="font-size: 50px; -unity-font-definition: url(&quot;project://database/Assets/InvicibleXGuest/UI/Fonts/Noto_Serif_Telugu,Parkinsans/Parkinsans/static/Parkinsans-SemiBold.ttf?fileID=12800000&amp;guid=a32f954748fd231418f644ce67d02210&amp;type=3#Parkinsans-SemiBold&quot;);" />
+    </engine:VisualElement>
+    <engine:VisualElement name="StoreItemsContainer" class="FlexibleGridLayout" style="position: absolute; width: 700px; height: 700px; align-self: flex-start; translate: 200px 200px; background-color: rgba(0, 0, 0, 0.88); border-top-width: 10px; border-right-width: 10px; border-bottom-width: 10px; border-left-width: 10px; border-top-left-radius: 20px; border-top-right-radius: 20px; border-bottom-right-radius: 20px; border-bottom-left-radius: 20px; align-items: stretch; justify-content: space-evenly; align-content: stretch; flex-basis: 0; flex-direction: column; flex-wrap: nowrap; flex-shrink: 0; flex-grow: 1;">
+    </engine:VisualElement>
+</engine:UXML>

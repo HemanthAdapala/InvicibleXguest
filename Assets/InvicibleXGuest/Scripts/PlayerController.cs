@@ -17,6 +17,8 @@ using UnityEngine.InputSystem;
 #endif
 public class PlayerController : NetworkBehaviour
 {
+    #region FIELDS
+
     private const float _threshold = 0.01f;
 
     [Header("Player")] [Tooltip("Move speed of the character in m/s")]
@@ -122,6 +124,8 @@ public class PlayerController : NetworkBehaviour
 #endif
         }
     }
+
+    #endregion
 
     public static PlayerController Instance { get; private set; }
     

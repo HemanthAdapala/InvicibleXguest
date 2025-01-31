@@ -11,11 +11,11 @@ namespace InvicibleXGuest.Scripts.UI
         {
         }
 
-        private void OnPurchasedAbilityItems(object sender, AbilityItemsShopPanelHandler.OnPowerUpItemBoughtEventArgs e)
+        private void OnPurchasedAbilityItems(object sender, SupportItemsShopUI.OnPowerUpItemBoughtEventArgs e)
         {
             var boughtPowerUpItemTransform = Instantiate(availablePowerUpItemPrefab, boughtPowerUpItemParent);
             var boughtPowerUpItemHandler = boughtPowerUpItemTransform.GetComponent<BoughtPowerUpItemHandler>();
-            boughtPowerUpItemHandler.SetUiData(e.AbilityItemType, e.AbilityItemData);
+            boughtPowerUpItemHandler.SetUiData(e.ItemType, e.ItemData);
         }
     }
 }

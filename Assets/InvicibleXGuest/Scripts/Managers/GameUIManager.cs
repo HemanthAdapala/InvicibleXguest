@@ -1,9 +1,10 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class GameUIManager : MonoBehaviour
 {
-    [SerializeField] private AbilityItemsShopPanelHandler abilityItemsShopPanelHandler;
+    [FormerlySerializedAs("supportItemsShopPanel")] [SerializeField] private SupportItemsShopUI supportItemsShopUI;
     [SerializeField] private GameUI gameUI;
 
     
@@ -11,13 +12,13 @@ public class GameUIManager : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Tab))
         {
-            if(abilityItemsShopPanelHandler.gameObject.activeSelf)
+            if(supportItemsShopUI.gameObject.activeSelf)
             {
-                abilityItemsShopPanelHandler.gameObject.SetActive(false);
+                supportItemsShopUI.gameObject.SetActive(false);
             }
             else
             {
-                abilityItemsShopPanelHandler.gameObject.SetActive(true);
+                supportItemsShopUI.gameObject.SetActive(true);
             }
         }
     }

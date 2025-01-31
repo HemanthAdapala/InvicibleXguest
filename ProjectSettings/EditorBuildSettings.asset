@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/InvicibleXGuest/Scenes/MainMenuScene-UIToolKit.unity
+    guid: e380a7bdf6a8a4642ae399c0c3f4e104
+  - enabled: 0
     path: Assets/InvicibleXGuest/Scenes/MainMenuScene.unity
     guid: 097b94a6ee177c04da6d12ccf135c0b6
   - enabled: 1
